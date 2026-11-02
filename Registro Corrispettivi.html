@@ -251,8 +251,9 @@
     <button id="btnExport" class="primary">Esporta Excel</button>
     <button id="btnImport">Importa Excel</button>
     <button id="btnBackup">Backup</button>
-    <button id="btnRestore">Ripristina</button>
+    <button id="btnRestore">Importa</button>
     <button id="btnSettings">Impostazioni</button>
+    <button id="btnReset">Reset</button>
   </div>
   <input type="file" id="fileXlsx" accept=".xlsx,.xls" hidden>
   <input type="file" id="fileJson" accept=".json" hidden>
@@ -420,17 +421,19 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 // ---------- finestre di dialogo interne ----------
 // Al posto di alert/confirm/prompt del sistema: nell'app desktop quelle finestre bloccano la tastiera
 // (non si riesce più a scrivere nei campi) e "prompt" non funziona affatto.
-function ask({ message, input = false, value = '', okOnly = false }) {
+function ask({ message, input = false, value = '', okOnly = false, ok = 'OK', cancel = 'Annulla' }) {
   const dlg = document.getElementById('dlgAsk'), inp = document.getElementById('askInput');
   document.getElementById('askMsg').textContent = message;
   inp.style.display = input ? 'block' : 'none'; inp.value = value;
   document.getElementById('askCancel').style.display = okOnly ? 'none' : '';
+  document.getElementById('askOk').textContent = ok; document.getElementById('askCancel').textContent = cancel;
+  // risponde subito al clic (senza aspettare l'evento "close"): OK → true / testo, Annulla → false, Esc → null
   return new Promise(resolve => {
-    const done = ok => { dlg.removeEventListener('close', onClose); resolve(ok ? (input ? inp.value : true) : (input ? null : false)); };
-    const onClose = () => done(dlg.returnValue === 'ok');
-    document.getElementById('askCancel').onclick = () => { dlg.returnValue = 'cancel'; dlg.close(); };
-    dlg.addEventListener('close', onClose);
-    dlg.returnValue = '';
+    const form = document.getElementById('askForm');
+    const done = v => { form.onsubmit = dlg.oncancel = document.getElementById('askCancel').onclick = null; dlg.close(); resolve(v); };
+    form.onsubmit = e => { e.preventDefault(); done(input ? inp.value : true); };
+    document.getElementById('askCancel').onclick = () => done(input ? null : false);
+    dlg.oncancel = e => { e.preventDefault(); done(null); };
     dlg.showModal();
     (input ? inp : document.getElementById('askOk')).focus();
     if (input) inp.select();
@@ -438,6 +441,7 @@ function ask({ message, input = false, value = '', okOnly = false }) {
 }
 const uiAlert = message => ask({ message, okOnly: true });
 const uiConfirm = message => ask({ message });
+const uiYesNo = message => ask({ message, ok: 'Sì', cancel: 'No' });
 const uiPrompt = (message, value) => ask({ message, input: true, value: String(value) });
 
 // ---------- render ----------
@@ -940,9 +944,21 @@ function download(blob, name) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
-document.getElementById('btnBackup').addEventListener('click', () => {
+function backup() {
   const stamp = new Date().toISOString().slice(0, 10);
   download(new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' }), `backup-corrispettivi-${stamp}.json`);
+}
+document.getElementById('btnBackup').addEventListener('click', backup);
+// Reset: prima propone il backup (Sì/No), poi chiede la conferma definitiva
+document.getElementById('btnReset').addEventListener('click', async () => {
+  const wantBackup = await uiYesNo('Vuoi fare il backup prima di resettare?');
+  if (wantBackup === null) return; // chiuso con Esc: si torna all'app
+  if (wantBackup) backup();
+  if (!(await uiYesNo('Sei convinto di procedere al reset?'))) return;
+  const y = new Date().getFullYear();
+  db = { settings: { company: DEFAULT_COMPANY, payRate: 22 }, years: { [y]: {} }, versamenti: {} };
+  save(); curYear = y; curMonth = new Date().getMonth() + 1; render();
+  toast('Reset completato: il registro è vuoto');
 });
 document.getElementById('btnRestore').addEventListener('click', () => document.getElementById('fileJson').click());
 document.getElementById('fileJson').addEventListener('change', async e => {
@@ -952,8 +968,8 @@ document.getElementById('fileJson').addEventListener('change', async e => {
     if (!d.years) throw new Error('file non valido');
     if (!(await uiConfirm('Sostituire tutti i dati attuali con quelli del backup?'))) return;
     db = { settings: Object.assign({ company: DEFAULT_COMPANY, payRate: 22 }, d.settings), years: d.years, versamenti: d.versamenti || {} };
-    save(); render(); toast('Backup ripristinato');
-  } catch (err) { uiAlert('Errore nel ripristino: ' + err.message); }
+    save(); render(); toast('Backup importato');
+  } catch (err) { uiAlert("Errore nell'importazione del backup: " + err.message); }
 });
 
 // export Excel (un foglio per mese + riepilogo, con formule)

@@ -2,7 +2,7 @@
 
 App per il Registro dei Corrispettivi giornalieri: inserimento per giorno (4%, 10%, 22%, POS, Bonifico, Assegni, esenti, fatture, altri importi), totali mensili e annuali, calcolo IVA per scorporo, stampa e PDF su un foglio A4, import/export Excel, backup e ripristino.
 
-L'app parte vuota: i dati della ditta si inseriscono da **Impostazioni**, gli incassi restano solo sul computer (backup con **Backup**/**Ripristina**).
+L'app parte vuota: i dati della ditta si inseriscono da **Impostazioni**, gli incassi restano solo sul computer (backup con **Backup**/**Importa**; **Reset** svuota il registro).
 
 ## Installazione
 
