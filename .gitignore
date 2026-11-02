@@ -1,0 +1,13 @@
+# generati
+desktop/node_modules/
+desktop/app/
+desktop/Installer/
+*.exe
+*.blockmap
+
+# dati personali: mai sul repository
+*.xlsx
+*.xls
+*.json.bak
+backup*.json
+Registro*backup*.json
