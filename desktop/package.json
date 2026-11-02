@@ -1,7 +1,7 @@
-﻿{
+{
   "name": "registro-corrispettivi",
   "productName": "Registro Corrispettivi",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Registro dei Corrispettivi",
   "author": "WaxStefanoMusic",
   "main": "main.js",
