@@ -100,6 +100,9 @@ function setZoom(delta) {
 // All'avvio controlla se c'è una versione nuova nelle Release del progetto su GitHub e lo
 // segnala con un popup nell'app ("Aggiorna" / "Chiudi"). Con "Chiudi" non si aggiorna:
 // il popup ricompare alla prossima apertura, oppure da menu ? > Verifica aggiornamenti.
+const UPD_LOG = () => path.join(app.getPath('userData'), 'aggiornamenti.log');
+const log = (...a) => { try { fs.appendFileSync(UPD_LOG(), `${new Date().toISOString()} ${a.join(' ')}\n`); } catch { /* non bloccante */ } };
+autoUpdater.logger = { info: log, warn: log, error: log, debug: () => {} };
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
 let manualCheck = false, downloading = false;
