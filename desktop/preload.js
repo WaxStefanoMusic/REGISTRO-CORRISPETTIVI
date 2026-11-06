@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld('updater', {
 
 contextBridge.exposeInMainWorld('desktop', {
   savePdf: name => ipcRenderer.invoke('pdf:save', name), // PDF con testo selezionabile
+  printers: () => ipcRenderer.invoke('print:list'),
+  print: opts => ipcRenderer.invoke('print:run', opts),
 });

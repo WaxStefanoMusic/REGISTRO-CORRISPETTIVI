@@ -300,6 +300,19 @@
   </div>
 </dialog>
 
+<dialog id="dlgPrint" aria-label="Stampa">
+  <h3>Stampa</h3>
+  <label for="prPrinter">Stampante</label>
+  <select id="prPrinter" style="width:100%"></select>
+  <p class="note" id="prPdfNote" hidden>Con una stampante PDF l'app salva direttamente il PDF, con testo selezionabile.</p>
+  <label for="prCopies">Copie</label>
+  <input id="prCopies" type="number" min="1" max="99" value="1" style="width:90px; font:inherit; padding:4px 6px">
+  <div class="actions">
+    <button id="prGo" class="primary">Stampa</button>
+    <button id="prCancel">Annulla</button>
+  </div>
+</dialog>
+
 <dialog id="dlgSettings">
   <h3>Impostazioni</h3>
   <label for="setCompany">Intestazione ditta (stampa ed export)</label>
@@ -812,7 +825,43 @@ document.addEventListener('click', e => {
     actions.classList.remove('open'); menuBtn.setAttribute('aria-expanded', 'false');
   }
 });
-document.getElementById('btnPrint').addEventListener('click', () => { buildPrint(); window.print(); });
+// Stampa. Nell'app desktop una finestra interna sceglie stampante e copie: se la stampante è un PDF
+// (es. "Microsoft Print to PDF") si salva il PDF dell'app, perché la stampa di Windows su PDF
+// trasformerebbe il testo in disegni non selezionabili.
+const PRINTER_KEY = 'registroCorrispettivi_stampante';
+const isPdfPrinter = p => /pdf/i.test(p.name + ' ' + (p.model || ''));
+let printers = [];
+async function printSheet() {
+  buildPrint();
+  if (!window.desktop) { window.print(); return; }
+  const dlg = document.getElementById('dlgPrint'), sel = document.getElementById('prPrinter');
+  try { printers = await window.desktop.printers(); } catch { printers = []; }
+  if (!printers.length) { uiAlert('Nessuna stampante installata su questo computer.'); return; }
+  let last = null; try { last = localStorage.getItem(PRINTER_KEY); } catch { /* facoltativo */ }
+  const pick = printers.find(p => p.name === last) || printers.find(p => p.isDefault) || printers[0];
+  sel.innerHTML = printers.map(p => `<option value="${esc(p.name)}"${p === pick ? ' selected' : ''}>${esc(p.displayName || p.name)}</option>`).join('');
+  sel.onchange();
+  document.getElementById('prCopies').value = 1;
+  dlg.showModal(); document.getElementById('prGo').focus();
+}
+document.getElementById('prPrinter').onchange = () => {
+  const p = printers.find(x => x.name === document.getElementById('prPrinter').value);
+  document.getElementById('prPdfNote').hidden = !(p && isPdfPrinter(p));
+  document.getElementById('prCopies').disabled = !!(p && isPdfPrinter(p));
+};
+document.getElementById('prCancel').addEventListener('click', () => document.getElementById('dlgPrint').close());
+document.getElementById('prGo').addEventListener('click', async () => {
+  const dlg = document.getElementById('dlgPrint'), name = document.getElementById('prPrinter').value;
+  const p = printers.find(x => x.name === name); dlg.close();
+  try { localStorage.setItem(PRINTER_KEY, name); } catch { /* facoltativo */ }
+  if (p && isPdfPrinter(p)) { exportPdf(); return; }
+  const copies = Math.min(99, Math.max(1, parseInt(document.getElementById('prCopies').value, 10) || 1));
+  toast('Stampa in corso…');
+  const r = await window.desktop.print({ deviceName: name, copies });
+  if (r.ok) toast('Stampa inviata a ' + (p?.displayName || name));
+  else if (r.reason && !/cancel/i.test(r.reason)) uiAlert('Stampa non riuscita: ' + r.reason);
+});
+document.getElementById('btnPrint').addEventListener('click', printSheet);
 
 // PDF A4: stesso foglio della stampa, con testo vero (selezionabile e ricercabile, non un'immagine)
 async function exportPdf() {
@@ -915,7 +964,7 @@ window.addEventListener('mousemove', e => {
 window.addEventListener('mouseup', () => { pvPan = null; pvStage.classList.remove('panning'); });
 document.getElementById('btnPreview').addEventListener('click', openPreview);
 document.getElementById('pvClose').addEventListener('click', () => dlgPreview.close());
-document.getElementById('pvPrint').addEventListener('click', () => { dlgPreview.close(); buildPrint(); window.print(); });
+document.getElementById('pvPrint').addEventListener('click', () => { dlgPreview.close(); printSheet(); });
 document.getElementById('pvPdf').addEventListener('click', exportPdf);
 window.addEventListener('resize', () => { if (dlgPreview.open && pvMode !== 'custom') fitPreview(); });
 

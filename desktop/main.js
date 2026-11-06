@@ -111,6 +111,14 @@ ipcMain.handle('pdf:save', async (_e, name) => {
   return filePath;
 });
 
+// ---------- stampa ----------
+ipcMain.handle('print:list', async () => (await win.webContents.getPrintersAsync()).map(p => ({
+  name: p.name, displayName: p.displayName, isDefault: p.isDefault, model: p.options?.['printer-make-and-model'] || '',
+})));
+ipcMain.handle('print:run', (_e, { deviceName, copies }) => new Promise(resolve => {
+  win.webContents.print({ silent: true, deviceName, copies, printBackground: true }, (ok, reason) => resolve({ ok, reason }));
+}));
+
 // ---------- aggiornamenti da GitHub ----------
 // All'avvio controlla se c'è una versione nuova nelle Release del progetto su GitHub e lo
 // segnala con un popup nell'app ("Aggiorna" / "Chiudi"). Con "Chiudi" non si aggiorna:
