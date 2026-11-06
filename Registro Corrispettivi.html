@@ -225,7 +225,6 @@
   .p-cap { font-weight: 700; font-size: 7pt; margin-bottom: 1mm; }
   .p-box { border: 0.15mm solid var(--p-line); padding: 1.2mm 2mm; font-size: 6.5pt; line-height: 1.9; }
   .p-box span { display: inline-block; border-bottom: 0.2mm dotted #000; min-width: 28mm; padding: 0 1mm; }
-  .p-note { font-size: 5.6pt; margin-top: 1.5mm; }
   @media print {
     @page { size: A4 portrait; margin: 7mm 8mm; }
     html, body { background: #fff; }
@@ -349,7 +348,7 @@ const FIELDS = [
   { key: 'titolo',   label: 'TITOLO E NORMA',group: 'OPERAZIONI ESENTI O NON IMPONIBILI', text: true },
   { key: 'fattDal',  label: 'DAL N.',        group: 'FATTURE', text: true },
   { key: 'fattAl',   label: 'AL N.',         group: 'FATTURE', text: true },
-  { key: 'altri',    label: 'IMPORTO',       group: 'ALTRI IMPORTI PER OPERAZIONI NON SOGGETTE A REGISTRAZIONE IVA (1)', sum: true },
+  { key: 'altri',    label: 'IMPORTO',       group: 'ALTRI IMPORTI PER OPERAZIONI NON SOGGETTE A REGISTRAZIONE IVA', sum: true },
 ];
 const NUM_FIELDS = FIELDS.filter(f => !f.text);
 
@@ -480,7 +479,7 @@ function headRows(first = 'GIORNO', totLabel = 'TOTALE<br>CORRISPETTIVI<br>GIORN
     if (last && last.name === f.group) last.span++; else groups.push({ name: f.group, span: 1 });
   });
   return `<tr class="h1"><th rowspan="2" class="grp">${first}</th><th rowspan="2" class="grp">${hy(totLabel)}</th>`
-    + groups.map(g => `<th colspan="${g.span}" class="grp">${hy(g.name.startsWith('ALTRI') ? 'ALTRI IMPORTI NON SOGG. A REG. IVA (1)' : g.name)}</th>`).join('') + `</tr><tr class="h2">`
+    + groups.map(g => `<th colspan="${g.span}" class="grp">${hy(g.name.startsWith('ALTRI') ? 'ALTRI IMPORTI NON SOGG. A REG. IVA' : g.name)}</th>`).join('') + `</tr><tr class="h2">`
     + FIELDS.map(f => `<th>${f.label}</th>`).join('') + `</tr>`;
 }
 // sezione separata del totale: intestazione propria + riga del totale
@@ -742,7 +741,7 @@ document.getElementById('sheet').addEventListener('keydown', e => {
 const P_WIDTHS = [13, ...Array(12).fill(181 / 12)]; // mm, totale 194: Giorno stretta, le altre uguali
 const P_GROUPS = { 'CORRISPETTIVI': 'CORRISPETTIVI', 'FATTURE': 'FATTURE',
   'OPERAZIONI ESENTI O NON IMPONIBILI': 'OPERAZ. ESENTI O NON IMPONIBILI',
-  'ALTRI IMPORTI PER OPERAZIONI NON SOGGETTE A REGISTRAZIONE IVA (1)': 'ALTRI IMPORTI NON SOGG. A REG. IVA (1)' };
+  'ALTRI IMPORTI PER OPERAZIONI NON SOGGETTE A REGISTRAZIONE IVA': 'ALTRI IMPORTI NON SOGG. A REG. IVA' };
 const pAmt = v => v ? fmt(v) : '';
 function pHead(first, totLabel) {
   const groups = [];
@@ -782,7 +781,6 @@ function pBox(y, m) {
   return `<div><div class="p-cap">Versamento</div><div class="p-box">`
     + VERS_FIELDS.map(f => `${f.label} <span>${val(f)}</span>`).join('<br>') + `</div></div>`;
 }
-const P_NOTE = `<div class="p-note">(1) Registrazioni obbligatorie per la contabilità semplificata delle imprese minori (sopravvenienze attive, plusvalenze ecc.)</div>`;
 function buildPrint() {
   const y = curYear, m = curMonth, company = esc(db.settings.company);
   let html;
@@ -796,7 +794,7 @@ function buildPrint() {
     html = `<div class="p-head"><div class="p-company">${company}</div><div class="p-title">RIEPILOGO CORRISPETTIVI ANNO ${y}${lastMonthLabel(y)}</div></div>
       <table class="p-reg">${pHead('MESE', 'TOTALE<br>CORRISPETTIVI<br>MENSILI')}<tbody>${body}</tbody></table>
       ${pTotTable('TOTALE<br>CORRISPETTIVI<br>ANNUALE', 'TOTALE<br>ANNUO', tot)}
-      <div class="p-bottom">${pIva(tot, `Calcolo IVA – Anno ${y}`)}</div>${P_NOTE}`;
+      <div class="p-bottom">${pIva(tot, `Calcolo IVA – Anno ${y}`)}</div>`;
   } else {
     const md = db.years[y]?.[m] || {}, n = daysIn(y, m);
     const mt = monthTotals(y, m);
@@ -810,7 +808,7 @@ function buildPrint() {
         <div class="p-title">CORRISPETTIVI ${MONTHS[m - 1]} ${y}</div></div>
       <table class="p-reg">${pHead('GIORNO')}<tbody>${body}</tbody></table>
       ${pTotTable('TOTALE<br>CORRISPETTIVI<br>MENSILI', 'TOT. MESE', mt)}
-      <div class="p-bottom">${pIva(mt, `Calcolo IVA – ${capMonth(m)} ${y}`)}${pBox(y, m)}</div>${P_NOTE}`;
+      <div class="p-bottom">${pIva(mt, `Calcolo IVA – ${capMonth(m)} ${y}`)}${pBox(y, m)}</div>`;
   }
   document.getElementById('printArea').innerHTML = html;
 }
