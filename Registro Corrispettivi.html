@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Registro Corrispettivi</title>
 <script src="lib/xlsx.full.min.js"></script>
-<script src="lib/html2canvas.min.js"></script>
-<script src="lib/jspdf.umd.min.js"></script>
 <style>
   :root {
     --bg: #f4f5f7; --surface: #fff; --ink: #000; --muted: #000; --line: #dfe3ea;
@@ -228,7 +226,6 @@
   .p-box { border: 0.15mm solid var(--p-line); padding: 1.2mm 2mm; font-size: 6.5pt; line-height: 1.9; }
   .p-box span { display: inline-block; border-bottom: 0.2mm dotted #000; min-width: 28mm; padding: 0 1mm; }
   .p-note { font-size: 5.6pt; margin-top: 1.5mm; }
-  #printArea.pdf-render { display: block; position: fixed; left: -10000px; top: 0; }
   @media print {
     @page { size: A4 portrait; margin: 7mm 8mm; }
     html, body { background: #fff; }
@@ -817,30 +814,27 @@ document.addEventListener('click', e => {
 });
 document.getElementById('btnPrint').addEventListener('click', () => { buildPrint(); window.print(); });
 
-// PDF A4: stesso foglio della stampa, scaricato direttamente
+// PDF A4: stesso foglio della stampa, con testo vero (selezionabile e ricercabile, non un'immagine)
 async function exportPdf() {
-  const btn = document.getElementById('btnPdf'), el = document.getElementById('printArea');
-  btn.disabled = true; toast('Creazione PDF…');
-  buildPrint(); el.classList.add('pdf-render');
+  const btn = document.getElementById('btnPdf');
+  const name = curMonth === 0
+    ? `Riepilogo Corrispettivi ${curYear}`
+    : `Corrispettivi ${MONTHS[curMonth - 1].charAt(0) + MONTHS[curMonth - 1].slice(1).toLowerCase()} ${curYear}`;
+  buildPrint();
+  if (!window.desktop) { // nel browser: finestra di stampa → "Salva come PDF"
+    toast('Nella finestra di stampa scegli "Salva come PDF"');
+    const t = document.title; document.title = name; // nome proposto per il file
+    window.print(); document.title = t;
+    return;
+  }
+  btn.disabled = true;
   try {
-    await document.fonts?.ready;
-    const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#ffffff', logging: false });
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const MX = 8, MY = 7, MAX_W = 194, MAX_H = 283; // stessi margini della stampa
-    let w = MAX_W, h = canvas.height * w / canvas.width;
-    if (h > MAX_H) { h = MAX_H; w = canvas.width * h / canvas.height; }
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MX + (MAX_W - w) / 2, MY, w, h, undefined, 'FAST');
-    const name = curMonth === 0
-      ? `Riepilogo Corrispettivi ${curYear}`
-      : `Corrispettivi ${MONTHS[curMonth - 1].charAt(0) + MONTHS[curMonth - 1].slice(1).toLowerCase()} ${curYear}`;
-    pdf.setProperties({ title: name });
-    pdf.save(name + '.pdf');
-    toast('PDF scaricato');
+    const file = await window.desktop.savePdf(name);
+    if (file) toast('PDF salvato: ' + file);
   } catch (err) {
     uiAlert('Errore nella creazione del PDF: ' + err.message);
   } finally {
-    el.classList.remove('pdf-render'); btn.disabled = false;
+    btn.disabled = false;
   }
 }
 document.getElementById('btnPdf').addEventListener('click', exportPdf);

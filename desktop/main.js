@@ -3,7 +3,7 @@
 // ridimensionamento di Windows (100%, 125%, 150%, 200%...) e anche spostando la finestra
 // tra monitor diversi. In più, su schermi molto grandi (2K/4K a scala 100%) l'app si ingrandisce
 // da sola; lo zoom si può sempre cambiare con Ctrl + / Ctrl − / Ctrl 0 o Ctrl + rotellina.
-const { app, BrowserWindow, Menu, screen, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, screen, shell, ipcMain, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -95,6 +95,21 @@ function setZoom(delta) {
   if (delta === 0) { delete s.zoom; delete s.zoomManual; } else { s.zoom = z; s.zoomManual = true; }
   writeState(s);
 }
+
+// ---------- PDF ----------
+// Il PDF lo crea Chromium dalla stampa A4 della pagina: testo vero, selezionabile e ricercabile.
+ipcMain.handle('pdf:save', async (_e, name) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    title: 'Salva PDF',
+    defaultPath: path.join(app.getPath('documents'), `${name}.pdf`),
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  });
+  win.webContents.focus();
+  if (canceled || !filePath) return null;
+  const data = await win.webContents.printToPDF({ preferCSSPageSize: true, printBackground: true });
+  fs.writeFileSync(filePath, data);
+  return filePath;
+});
 
 // ---------- aggiornamenti da GitHub ----------
 // All'avvio controlla se c'è una versione nuova nelle Release del progetto su GitHub e lo

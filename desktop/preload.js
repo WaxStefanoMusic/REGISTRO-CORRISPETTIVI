@@ -11,3 +11,7 @@ contextBridge.exposeInMainWorld('updater', {
   onNone: cb => on('upd:none', cb),
   download: () => ipcRenderer.send('upd:download'),
 });
+
+contextBridge.exposeInMainWorld('desktop', {
+  savePdf: name => ipcRenderer.invoke('pdf:save', name), // PDF con testo selezionabile
+});
